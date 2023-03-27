@@ -113,10 +113,11 @@ def showWelcomeAnimation():
 
     
 def mainGame(movementInfo):
-    yguardada = 222
-    promedioMovil = 5
-    yPromedio = yguardada
-    yAnteriores = [yPromedio]*promedioMovil
+    yguardada = 222 # Valor inicial de la Variable y (Posicion Inicial Pajaro Seteada)
+    promedioMovil = 5 # Cantidad de valores a tomar en el Vector yAnteriores
+    yPromedio = yguardada # Promedio de valores anteriores que toma el pajaro en y
+    yAnteriores = [yPromedio]*promedioMovil # Vector de valores anteriores de Y
+    
     
     score = playerIndex = loopIter = 0
     playerIndexGen = movementInfo['playerIndexGen']
@@ -155,35 +156,30 @@ def mainGame(movementInfo):
     playerFlapAcc =  -9   # players speed on flapping
     playerFlapped = False # True when player flaps
 
-    zoe  = cv2.VideoCapture(0)
+    zoe  = cv2.VideoCapture(0)#Captura del momento inicial del objeto en Camara
     
     while True:
-        y = centroid(zoe)
+        y = centroid(zoe) # Calculo del centroide utilizando la Tecnica Aproximacion de Contorno
         if y is not None:
-            #if 222>=y:
-            #   evt = pygame.event.Event(KEYDOWN, key=K_UP)
-            #   pygame.event.post(evt)
             
-            yAnteriores.pop(0)
-            yAnteriores.append(y)
-            yguardada = sum(yAnteriores)/promedioMovil
+            yAnteriores.pop(0) # Posicion 0 del Vector de yAnteriores
+            yAnteriores.append(y) # Valor a Inserta en el vector (Valores que varian segun el Mov en Y Del objeto)
+        
+            yguardada = sum(yAnteriores)/promedioMovil # Calculo del promedio de los valores anteriore utilizando el vector 
 
+        
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
-                if playery > -2 * IMAGES['player'][0].get_height():
-                    playerVelY = playerFlapAcc
-                    playerFlapped = True
-                    SOUNDS['wing'].play()
+   
 
         # check for crash here
         crashTest = checkCrash({'x': playerx, 'y': playery, 'index': playerIndex},
                                upperPipes, lowerPipes)
-        if crashTest[0]:
-            zoe.release() 
-            cv2.destroyAllWindows()
+        if crashTest[0]:# Condicion del Juego si el pajaro colisiona 
+            zoe.release() # Capture se termina (se deja de mostrar)
+            cv2.destroyAllWindows() # Cierre de las Ventana Frame y Camera
             return {
                 'y': playery,
                 'groundCrash': crashTest[1],
@@ -223,7 +219,7 @@ def mainGame(movementInfo):
             playerRot = 45
 
         playerHeight = IMAGES['player'][playerIndex].get_height()
-        #playery += min(playerVelY, BASEY - playery - playerHeight)
+       
         playery = yguardada
         # move pipes to left
         for uPipe, lPipe in zip(upperPipes, lowerPipes):
@@ -424,42 +420,43 @@ def getHitmask(image):
             mask[x].append(bool(image.get_at((x,y))[3]))
     return mask
 
-def centroid(cap):
-    ret, frame = cap.read()
-    width = int(cap.get(3))
-    height = int(cap.get(4))
-    # Realza los colores
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+def centroid(cap): # Funcion donde se calcula el Centroide
+    ret, frame = cap.read() # Lectura del Frame en una transmision en tiempo real
+    width = int(cap.get(3)) # Anchura en Pixeles del Frame
+    height = int(cap.get(4)) # Altura en pixeles del Frame
+    
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)# Realce de los colores
     # Define el límite de el amarillo
-    lower_yellow = np.array([22, 93, 0])
-    upper_yellow = np.array([45, 255, 255])
+    lower_yellow = np.array([22, 93, 0]) #Limite Inferior
+    upper_yellow = np.array([45, 255, 255])#Limite Superior
 
-    mask = cv2.inRange(hsv,lower_yellow, upper_yellow)
-    cnt = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    cnt = imutils.grab_contours(cnt)
+    mask = cv2.inRange(hsv,lower_yellow, upper_yellow) #Mascara que indica que pixeles estan dentro de un rango de colores
+    cnt = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)#Contorno del objeto en Camara
+    cnt = imutils.grab_contours(cnt) #Extrae los contornos del Objeto
 
     for c in cnt:
-        area = cv2.contourArea(c)
-        if area > 1000:
+        area = cv2.contourArea(c) # Calculo del area del contorno
+        if area > 1000: # Condicion del area que debe tener el Objeto para una buena Lectura
 
-            cv2.drawContours(frame,[c],-1,(0,255,0),3)
-            M = cv2.moments(c)
-            cx = int(M["m10"]/M["m00"])
-            cy = int(M["m01"]/M["m00"])
+            cv2.drawContours(frame,[c],-1,(0,255,0),3) # Dibujar los contornos de la imagen
+            M = cv2.moments(c) # Calculo de momentos del contorno 
+            cx = int(M["m10"]/M["m00"])# Calculo del punto medio en X
+            cy = int(M["m01"]/M["m00"])# Calculo del punto medio en Y
 
 
-            cv2.circle(frame,(cx,cy),7,(255,255,255),-1)
+            cv2.circle(frame,(cx,cy),7,(255,255,255),-1) #Dibujar circulos en una Imagen 
             
-            cv2.imshow("frame",frame)
-            print("Zoito Perritu:", cy)
-            return cy
+            cv2.imshow("frame",frame) # Mostrar imagen en ventana 
+         
+
+            return cy # Retorno de la posicion del pajaro en Y
 
    
     
-    result = cv2.bitwise_and(frame, frame, mask=mask)
+    result = cv2.bitwise_and(frame, frame, mask=mask)# Resultado de la combinacion de las "imagenes"
 
-    cv2.imshow("Camera", result)
-    #cv2.imshow("Mask", mask)
+    cv2.imshow("Camera", result)# Muestra imagen en una ventana
+    
 
 
 
